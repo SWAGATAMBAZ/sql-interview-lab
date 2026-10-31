@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL Interview Lab — MySQL + pandas practice for DA / BA / DS roles</title>
+<meta name="description" content="92 interview-grade SQL problems on realistic multi-table business datasets (e-commerce, payments, lending, delivery, product analytics). Solve in MySQL or pandas right in the browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23f2b544'/><text x='16' y='22' font-size='15' font-family='monospace' font-weight='700' text-anchor='middle' fill='%23111'>SQL</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/cm/codemirror.css">
+<link rel="stylesheet" href="vendor/cm/addon/show-hint.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#problems">
+    <span class="brand-mark">SQL</span>
+    <span class="brand-text">Interview Lab</span>
+  </a>
+  <nav class="nav">
+    <a href="#problems" data-nav="problems">Problems</a>
+    <a href="#datasets" data-nav="datasets">Datasets</a>
+    <a href="#notes" data-nav="notes">My Notes</a>
+    <a href="#guide" data-nav="guide">Prep Guide</a>
+  </nav>
+  <div class="top-progress" id="topProgress" title="Problems solved (SQL or pandas)"></div>
+</header>
+<main id="app"></main>
+<div id="toast" class="toast"></div>
+
+<script src="vendor/cm/codemirror.js"></script>
+<script src="vendor/cm/mode/sql.js"></script>
+<script src="vendor/cm/mode/python.js"></script>
+<script src="vendor/cm/addon/matchbrackets.js"></script>
+<script src="vendor/cm/addon/closebrackets.js"></script>
+<script src="vendor/cm/addon/show-hint.js"></script>
+<script src="vendor/cm/addon/sql-hint.js"></script>
+<script src="vendor/cm/addon/comment.js"></script>
+<script src="vendor/cm/addon/runmode.js"></script>
+<script src="vendor/sql-wasm.js"></script>
+<script src="js/compat.js"></script>
+<script src="data/helpers.js"></script>
+<script src="data/q_core.js"></script>
+<script src="data/q_window.js"></script>
+<script src="data/q_islands.js"></script>
+<script src="data/q_cohort.js"></script>
+<script src="data/q_product.js"></script>
+<script src="data/q_retail.js"></script>
+<script src="data/q_payments.js"></script>
+<script src="data/q_lending.js"></script>
+<script src="data/q_delivery.js"></script>
+<script src="data/q_puzzles.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
