@@ -6,6 +6,7 @@
 - **Every pattern that shows up in interviews:** top-N per group, running totals, moving averages, LAG/LEAD, gaps & islands, sessionization, cohorts/retention, ordered funnels, pivots, recursive CTEs, date spines, anti-joins, relational division, fan-out traps, reconciliation, data cleaning, and the classic LeetCode / Namaste-SQL puzzles (rewritten with original data).
 - **Filters:** difficulty, interview level (L1 ₹10–25 LPA → L3 ₹45–80 LPA), domain, topic/pattern, company, status, bookmarks.
 - **Hidden optimal solutions** in MySQL *and* pandas, each with a plain-English explanation.
+- **Permanent question IDs** (Q001–Q092) shown everywhere; search or "Go to" by number. Full list in [QUESTIONS.md](QUESTIONS.md).
 - **Notes** per question (autosaved), a global scratchpad, a "My Notes" page, Markdown export and JSON backup/restore.
 
 Everything runs client-side. Progress, code and notes are stored in your browser's `localStorage`.

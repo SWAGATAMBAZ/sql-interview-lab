@@ -106,7 +106,7 @@ h1, h2, h3 { margin: 0; letter-spacing: -.2px; }
 .qtable tbody tr { cursor: pointer; }
 .qtable tbody tr:hover td { background: #1d2230; }
 .qtitle { font-weight: 600; color: var(--text); }
-.qid { font-family: var(--mono); color: var(--faint); width: 44px; }
+.qid { font-family: var(--mono); color: var(--accent-2); font-weight: 600; width: 60px; }
 .status-ic { font-family: var(--mono); font-size: 11px; display: inline-flex; gap: 4px; }
 .status-ic span { padding: 0 5px; border-radius: 4px; border: 1px solid var(--line-2); color: var(--faint); }
 .status-ic span.done { color: #9df0cb; border-color: #2b6b52; background: #1b3a2e; }
@@ -275,3 +275,11 @@ li.CodeMirror-hint-active { background: var(--accent); color: var(--accent-ink);
 .modal { background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; padding: 18px 20px; max-width: 420px; width: calc(100% - 40px); box-shadow: 0 20px 60px #0008; }
 .modal p { margin: 0 0 14px; }
 .modal .row { display: flex; justify-content: flex-end; gap: 8px; }
+
+.qcode { font-family: var(--mono); font-weight: 700; font-size: 13px; color: var(--accent-ink); background: var(--accent); padding: 2px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.qcode:hover { background: var(--accent-2); }
+.qcode.sm { font-size: 11px; padding: 1px 6px; cursor: inherit; }
+.idnote { font-size: 12.5px; color: var(--muted); background: var(--panel); border: 1px dashed var(--line-2); border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.idnote b { font-family: var(--mono); color: var(--accent-2); }
+.goto { display: flex; gap: 6px; margin-left: 12px; }
+.goto input { width: 110px; padding: 5px 8px; }

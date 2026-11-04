@@ -7,6 +7,7 @@
   const TIERS = { 1: 'L1 · Core (₹10–25 LPA)', 2: 'L2 · Strong (₹25–45 LPA)', 3: 'L3 · Advanced (₹45–80 LPA)' };
   const TIER_SHORT = { 1: 'L1', 2: 'L2', 3: 'L3' };
   const DIFFS = ['Easy', 'Medium', 'Hard'];
+  const qcode = id => 'Q' + String(id).padStart(3, '0');   // permanent question ID, e.g. Q031
   const domainOf = q => (q.dataset ? META[q.dataset].domain : 'Puzzles & transformations');
   const app = document.getElementById('app');
 
@@ -131,7 +132,7 @@
       </section>
       <div class="layout">
         <aside class="filters">
-          <h4>Search</h4><input type="search" id="fq" placeholder="title, table, keyword…" value="${esc(F.q)}">
+          <h4>Search</h4><input type="search" id="fq" placeholder="Q031, 31, title, table, keyword…" value="${esc(F.q)}">
           <h4>Status</h4>
           ${[['all', 'All'], ['unsolved', 'Unsolved'], ['attempted', 'Attempted, not solved'], ['solved', 'Solved'], ['bookmarked', '★ Bookmarked'], ['noted', '📝 Has notes']].map(([v, l]) => `<label class="opt"><input type="radio" name="fstatus" value="${v}" ${F.status === v ? 'checked' : ''}> ${l}</label>`).join('')}
           <h4>Difficulty</h4>
@@ -148,7 +149,7 @@
           <div style="margin-top:14px"><button class="btn small ghost" id="clearF">Clear all filters</button></div>
         </aside>
         <section>
-          <div class="list-head"><span class="count" id="countLbl"></span>
+          <div class="list-head"><span class="count" id="countLbl"></span><form id="gotoF" class="goto"><input type="text" id="gotoIn" placeholder="Go to Q…" size="9"><button class="btn small">Open</button></form>
             <select id="fsort"><option value="id">Sort: default order</option><option value="diff">Sort: difficulty</option><option value="tier">Sort: interview level</option><option value="domain">Sort: domain</option></select></div>
           <table class="qtable"><thead><tr><th>#</th><th>Problem</th><th class="hide-sm">Domain</th><th>Level</th><th class="hide-sm">Seen at</th><th>Status</th><th></th></tr></thead><tbody id="qbody"></tbody></table>
         </section>
@@ -156,6 +157,7 @@
     const save = () => sessionStorage.setItem('sqlab.filters', JSON.stringify(F));
     const tbody = document.getElementById('qbody');
     function apply() {
+      if (!document.body.contains(tbody)) return;   // page was left before a delayed refresh fired
       const bm = bookmarks(), nt = notes();
       const q = F.q.trim().toLowerCase();
       let list = QS.filter(x => {
@@ -169,6 +171,8 @@
         if (F.status === 'attempted' && (!isAttempted(x.id) || isSolved(x.id))) return false;
         if (F.status === 'bookmarked' && !bm.has(x.id)) return false;
         if (F.status === 'noted' && !nt[x.id]) return false;
+        const num = /^#?q?0*(\d+)$/i.exec(q);
+        if (num) return x.id === +num[1];
         if (q) {
           const tables = x.tables ? Object.keys(x.tables).join(' ') : x.dataset;
           const hay = (x.title + ' ' + x.topics.join(' ') + ' ' + x.companies.join(' ') + ' ' + tables + ' ' + domainOf(x) + ' ' + x.prompt.replace(/<[^>]+>/g, ' ')).toLowerCase();
@@ -183,7 +187,7 @@
       tbody.innerHTML = list.length ? list.map(x => {
         const s = pr[x.id] || {};
         const ic = l => `<span class="${s[l] === 'solved' ? 'done' : s[l] ? 'try' : ''}" title="${l === 'sql' ? 'MySQL' : 'pandas'}: ${s[l] || 'not started'}">${l === 'sql' ? 'SQL' : 'PY'}${s[l] === 'solved' ? ' ✓' : ''}</span>`;
-        return `<tr data-id="${x.id}"><td class="qid">${x.id}</td>
+        return `<tr data-id="${x.id}"><td class="qid">${qcode(x.id)}</td>
           <td><div class="qtitle">${esc(x.title)} ${nt[x.id] ? '<span title="has notes">📝</span>' : ''}</div><div>${x.topics.slice(0, 4).map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div></td>
           <td class="hide-sm muted" style="white-space:nowrap">${esc(domainOf(x))}</td>
           <td style="white-space:nowrap"><span class="pill ${x.difficulty}">${x.difficulty}</span> <span class="tier">${TIER_SHORT[x.tier]}</span></td>
@@ -197,6 +201,10 @@
       const st = e.target.closest('[data-star]');
       if (st) { const on = toggleBookmark(+st.dataset.star); st.classList.toggle('on', on); st.textContent = on ? '★' : '☆'; e.stopPropagation(); return; }
       const tr = e.target.closest('tr[data-id]'); if (tr) location.hash = '#q-' + tr.dataset.id;
+    });
+    document.getElementById('gotoF').addEventListener('submit', e => {
+      e.preventDefault(); const m = /(\d+)/.exec(document.getElementById('gotoIn').value);
+      if (m && QBYID[+m[1]]) location.hash = '#q-' + +m[1]; else toast('No question with that number (Q001–' + qcode(QS[QS.length - 1].id) + ')');
     });
     document.getElementById('fq').addEventListener('input', debounce(e => { F.q = e.target.value; apply(); }, 150));
     document.querySelectorAll('input[name=fstatus]').forEach(r => r.addEventListener('change', e => { F.status = e.target.value; apply(); }));
@@ -220,8 +228,8 @@
   // ================= QUESTION WORKSPACE =================
   function starter(q, lang, tableNames) {
     const first = tableNames[0];
-    if (lang === 'sql') return `-- Q${q.id}. ${q.title}\n-- Tables: ${tableNames.join(', ')}\n-- MySQL 8 syntax.  Run: Ctrl/Cmd+Enter   Check answer: Ctrl/Cmd+Shift+Enter\n\nSELECT *\nFROM ${first}\nLIMIT 10;\n`;
-    return `# Q${q.id}. ${q.title}\n# DataFrames: ${tableNames.join(', ')}   (pd and np are already imported)\n# DATE/DATETIME columns are already parsed as datetime64.\n# Put your final answer in a DataFrame called \`result\`.\n\nresult = ${first}.head(10)\n`;
+    if (lang === 'sql') return `-- ${qcode(q.id)}. ${q.title}\n-- Tables: ${tableNames.join(', ')}\n-- MySQL 8 syntax.  Run: Ctrl/Cmd+Enter   Check answer: Ctrl/Cmd+Shift+Enter\n\nSELECT *\nFROM ${first}\nLIMIT 10;\n`;
+    return `# ${qcode(q.id)}. ${q.title}\n# DataFrames: ${tableNames.join(', ')}   (pd and np are already imported)\n# DATE/DATETIME columns are already parsed as datetime64.\n# Put your final answer in a DataFrame called \`result\`.\n\nresult = ${first}.head(10)\n`;
   }
   function viewQuestion(q) {
     setNav('problems');
@@ -234,7 +242,7 @@
       <section class="pane">
         <div class="ws-head">
           <a class="btn small ghost" href="#problems">← Problems</a>
-          <h2>${q.id}. ${esc(q.title)}</h2>
+          <span class="qcode" id="qCode" title="Click to copy this question ID">${qcode(q.id)}</span><h2>${esc(q.title)}</h2>
           <span class="star ${bm.has(q.id) ? 'on' : ''}" id="qStar" title="Bookmark">${bm.has(q.id) ? '★' : '☆'}</span>
           <div class="nav-q">${prev ? `<a class="btn small" href="#q-${prev.id}" title="Previous">‹</a>` : ''}${next ? `<a class="btn small" href="#q-${next.id}" title="Next">›</a>` : ''}</div>
         </div>
@@ -266,12 +274,13 @@
       document.querySelectorAll('#ltabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
       if (t === 'desc') {
         const dsLine = q.dataset ? `<div class="ds-banner">Dataset: <b>${esc(META[q.dataset].title)}</b> — multi-table, open the <a href="#" data-goto="schema">Schema &amp; data</a> tab for columns and sample rows.</div>` : `<div class="ds-banner">Tables for this problem: ${tableNames.map(t => `<code>${t}</code>`).join(' ')} — see <a href="#" data-goto="schema">Schema &amp; data</a>.</div>`;
-        lbody.innerHTML = `<div class="meta-row"><span class="pill ${q.difficulty}">${q.difficulty}</span><span class="tier">${TIERS[q.tier]}</span><span class="chip">${esc(domainOf(q))}</span></div>
+        lbody.innerHTML = `<div class="idnote">Question ID <b>${qcode(q.id)}</b> — quote this ID when you ask for help with this problem. <button class="btn small ghost" id="copyId2">Copy ID</button></div><div class="meta-row"><span class="pill ${q.difficulty}">${q.difficulty}</span><span class="tier">${TIERS[q.tier]}</span><span class="chip">${esc(domainOf(q))}</span></div>
           <div class="prose">${q.prompt}</div>${dsLine}
           <div class="section-label">Patterns</div><div>${q.topics.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>
           <div class="section-label">Pattern reported in interviews at</div><div class="muted">${esc(q.companies.join(' · '))}</div>
           <div class="section-label">Expected output</div>
           <div id="expBox"><button class="btn small" id="expBtn">Show first 5 rows of the expected output</button> <span class="faint">(columns + format, small spoiler)</span></div>`;
+        document.getElementById('copyId2').addEventListener('click', copyId);
         lbody.querySelectorAll('[data-goto]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); renderLeft(a.dataset.goto); }));
         document.getElementById('expBtn').addEventListener('click', async () => {
           const box = document.getElementById('expBox'); box.innerHTML = '<span class="faint">Computing…</span>';
@@ -319,6 +328,8 @@
         });
       }
     }
+    function copyId() { copyText(`${qcode(q.id)} — ${q.title}`, 'Question ID'); }
+    document.getElementById('qCode').addEventListener('click', copyId);
     document.getElementById('ltabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) renderLeft(b.dataset.t); });
     document.getElementById('qStar').addEventListener('click', e => { const on = toggleBookmark(q.id); e.target.classList.toggle('on', on); e.target.textContent = on ? '★' : '☆'; });
     renderLeft('desc');
@@ -364,7 +375,7 @@
       document.querySelectorAll('#btabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
       if (t === 'out') { bbody.innerHTML = lastOut; return; }
       const n = notes()[q.id] || { text: '', important: false };
-      bbody.innerHTML = `<div class="notes-panel"><div class="row"><b>Notes for Q${q.id}</b><span class="faint">— saved in this browser, all notes appear on the <a href="#notes">My Notes</a> page</span><span class="saved" id="savedLbl">${n.updated ? 'saved' : ''}</span></div>
+      bbody.innerHTML = `<div class="notes-panel"><div class="row"><b>Notes for ${qcode(q.id)}</b><span class="faint">— saved in this browser, all notes appear on the <a href="#notes">My Notes</a> page</span><span class="saved" id="savedLbl">${n.updated ? 'saved' : ''}</span></div>
         <textarea id="noteTa" placeholder="Key insight, the pattern, mistakes you made, edge cases… Use \`\`\` fences for code.">${esc(n.text)}</textarea>
         <div class="row"><button class="btn small" id="impBtn">${n.important ? '⭐ Marked important' : '☆ Mark important'}</button><button class="btn small" id="insCode">Insert my current code</button><button class="btn small" id="insSol">Insert the pattern hint</button></div></div>`;
       const ta = document.getElementById('noteTa'), lbl = document.getElementById('savedLbl');
@@ -467,9 +478,9 @@
     function draw() {
       const q = document.getElementById('nq').value.toLowerCase(), imp = document.getElementById('nImp').checked;
       const n = notes();
-      const list = Object.entries(n).filter(([id, v]) => QBYID[id] && (!imp || v.important) && (!q || (v.text + ' ' + QBYID[id].title).toLowerCase().includes(q)))
+      const list = Object.entries(n).filter(([id, v]) => QBYID[id] && (!imp || v.important) && (!q || (v.text + ' ' + QBYID[id].title + ' ' + qcode(id)).toLowerCase().includes(q)))
         .sort((a, b) => (b[1].important - a[1].important) || (b[1].updated - a[1].updated));
-      cards.innerHTML = list.length ? list.map(([id, v]) => { const x = QBYID[id]; return `<article class="note-card ${v.important ? 'important' : ''}"><header>${v.important ? '⭐' : ''}<a href="#q-${id}">${id}. ${esc(x.title)}</a><span class="pill ${x.difficulty}">${x.difficulty}</span></header>
+      cards.innerHTML = list.length ? list.map(([id, v]) => { const x = QBYID[id]; return `<article class="note-card ${v.important ? 'important' : ''}"><header>${v.important ? '⭐' : ''}<a href="#q-${id}"><span class="qcode sm">${qcode(id)}</span> ${esc(x.title)}</a><span class="pill ${x.difficulty}">${x.difficulty}</span></header>
         <div>${x.topics.slice(0, 4).map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>
         <div class="body">${renderNoteBody(v.text) || '<span class="faint">(no text)</span>'}</div>
         <footer>Updated ${new Date(v.updated).toLocaleString()}<button class="btn small ghost" data-del="${id}">Delete</button></footer></article>`; }).join('')
@@ -488,7 +499,7 @@
     const toMd = () => {
       const n = notes();
       let md = `# SQL Interview Lab — my notes\n\n## Scratchpad\n\n${LS.get('notes.general', '')}\n\n`;
-      Object.entries(n).sort((a, b) => a[0] - b[0]).forEach(([id, v]) => { const x = QBYID[id]; if (x) md += `## ${v.important ? '⭐ ' : ''}Q${id}. ${x.title} (${x.difficulty})\n_Patterns: ${x.topics.join(', ')}_\n\n${v.text}\n\n`; });
+      Object.entries(n).sort((a, b) => a[0] - b[0]).forEach(([id, v]) => { const x = QBYID[id]; if (x) md += `## ${v.important ? '⭐ ' : ''}${qcode(id)}. ${x.title} (${x.difficulty})\n_Patterns: ${x.topics.join(', ')}_\n\n${v.text}\n\n`; });
       return md;
     };
     document.getElementById('dlMd').addEventListener('click', () => download('sql-notes.md', toMd(), 'text/markdown'));
@@ -545,7 +556,7 @@
         if (lang === 'py') Engine.initPy(s => (document.getElementById('pgStatus').textContent = s)).then(() => (document.getElementById('pgStatus').textContent = 'pandas ready')).catch(e => (document.getElementById('pgStatus').textContent = '⚠️ ' + e.message));
       }));
       document.getElementById('pgSide').innerHTML = `<div class="ds-banner" style="margin-top:0">${esc(ds.description)}</div>` + Object.entries(ds.tables).map(([n, t]) => `<div class="schema-table"><header><b>${n}</b><span class="rc">${t.rows.length.toLocaleString()} rows</span><button class="btn small" data-q="${n}">Query</button></header>${t.description ? `<div class="desc">${esc(t.description)}</div>` : ''}<div class="cols">${t.columns.map((c, i) => `<span>${c}<i>${t.types[i]}</i></span>`).join('')}</div></div>`).join('') +
-        `<div class="section-label">Problems on this dataset</div>` + QS.filter(q => q.dataset === key).map(q => `<div style="margin:4px 0"><a href="#q-${q.id}">${q.id}. ${esc(q.title)}</a> <span class="pill ${q.difficulty}">${q.difficulty}</span></div>`).join('');
+        `<div class="section-label">Problems on this dataset</div>` + QS.filter(q => q.dataset === key).map(q => `<div style="margin:4px 0"><a href="#q-${q.id}">${qcode(q.id)} · ${esc(q.title)}</a> <span class="pill ${q.difficulty}">${q.difficulty}</span></div>`).join('');
       document.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => { cm.setValue(lang === 'sql' ? `SELECT *\nFROM ${b.dataset.q}\nLIMIT 20;` : `result = ${b.dataset.q}.head(20)`); run(); }));
       setTimeout(() => cm.refresh(), 20);
     });
@@ -554,7 +565,7 @@
   // ================= GUIDE =================
   function viewGuide(anchor) {
     setNav('guide');
-    const link = id => `<a href="#q-${id}">Q${id}</a>`;
+    const link = id => `<a href="#q-${id}">${qcode(id)}</a>`;
     const byTopic = t => QS.filter(q => q.topics.includes(t)).map(q => link(q.id)).join(' ');
     const PAT = [
       ['Top-N per group / argmax', '"top 3 in each", "highest … per …", "latest record"', 'ROW_NUMBER / DENSE_RANK in a CTE, filter in outer query', 'Top-N per group'],
