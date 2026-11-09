@@ -35,8 +35,9 @@ async function dbFor(q) {
   return db;
 }
 function tablesFor(q) { return q.dataset ? loadDatasetDef(q.dataset).tables : q.tables; }
-function runSQL(db, sql) {
-  const res = db.exec(compat.rewriteMySQL(sql));
+function runSQL(db, sql, after) {
+  let res = db.exec(compat.rewriteMySQL(sql));
+  if (after) res = res.concat(db.exec(compat.rewriteMySQL(after)));
   const last = res[res.length - 1];
   return last ? { columns: last.columns, rows: last.values } : { columns: [], rows: [] };
 }

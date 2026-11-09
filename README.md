@@ -1,12 +1,13 @@
 # SQL Interview Lab
 
-92 interview-grade SQL problems for **Data Analyst / Business Analyst / Data Scientist (2–3+ yrs)** roles — solve each one in **MySQL** or **Python (pandas)** right in the browser, check your answer instantly, and keep notes.
+92 interview-grade SQL problems plus a **LeetCode SQL tab with 69 Database problems (LC175–LC1336)** for **Data Analyst / Business Analyst / Data Scientist (2–3+ yrs)** roles — solve each one in **MySQL** or **Python (pandas)** right in the browser, check your answer instantly, and keep notes.
 
 - **Realistic multi-table datasets** (generated, ~60K rows total): e-commerce sales & returns, a payment gateway (retries, outages, refunds, T+2 settlements, fraud), a lending book (EMIs, partial/late payments, DPD), food delivery, raw app event logs, subscriptions, HR, ride hailing.
 - **Every pattern that shows up in interviews:** top-N per group, running totals, moving averages, LAG/LEAD, gaps & islands, sessionization, cohorts/retention, ordered funnels, pivots, recursive CTEs, date spines, anti-joins, relational division, fan-out traps, reconciliation, data cleaning, and the classic LeetCode / Namaste-SQL puzzles (rewritten with original data).
 - **Filters:** difficulty, interview level (L1 ₹10–25 LPA → L3 ₹45–80 LPA), domain, topic/pattern, company, status, bookmarks.
 - **Hidden optimal solutions** in MySQL *and* pandas, each with a plain-English explanation.
-- **Permanent question IDs** (Q001–Q092) shown everywhere; search or "Go to" by number. Full list in [QUESTIONS.md](QUESTIONS.md).
+- **LeetCode tab:** the LeetCode Database problems 175 → 1336 with their LeetCode numbers and titles, short rewritten statements, original sample tables, optimised MySQL + pandas solutions, and a link to each official problem. DELETE/UPDATE problems (196, 627) are checked by the table's state afterwards.
+- **Permanent question IDs** (Q001–Q092, LC175–LC1336) shown everywhere; search or "Go to" by number. Full list in [QUESTIONS.md](QUESTIONS.md).
 - **Notes** per question (autosaved), a global scratchpad, a "My Notes" page, Markdown export and JSON backup/restore.
 
 Everything runs client-side. Progress, code and notes are stored in your browser's `localStorage`.
@@ -42,7 +43,8 @@ css/style.css       styles
 js/app.js           UI: problem list, workspace, notes, datasets playground, prep guide
 js/engine.js        SQL + Python execution and answer comparison
 js/compat.js        MySQL → SQLite compatibility layer
-data/q_*.js         the 92 questions (prompt, hint, SQL + pandas solutions, explanations)
+data/q_*.js         the 92 interview questions (prompt, hint, SQL + pandas solutions, explanations)
+data/q_lc_*.js      the 69 LeetCode questions (same format, created with LC(number, {...}))
 datasets/*.js       the generated datasets (loaded lazily per problem)
 vendor/             sql.js + CodeMirror
 ```

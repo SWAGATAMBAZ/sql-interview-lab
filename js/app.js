@@ -1,14 +1,20 @@
 /* SQL Interview Lab — single page app */
 (function () {
   'use strict';
-  const QS = window.QUESTIONS.slice().sort((a, b) => a.id - b.id);
-  const QBYID = Object.fromEntries(QS.map(q => [q.id, q]));
+  const ALL = window.QUESTIONS.slice().sort((a, b) => a.id - b.id);
+  const QBYID = Object.fromEntries(ALL.map(q => [q.id, q]));
+  const QS = ALL.filter(q => q.set !== 'lc');            // main interview set (Q001…)
+  const LCQ = ALL.filter(q => q.set === 'lc');            // LeetCode set (LC175…), internal id = 10000 + number
+  const setOf = q => (q.set === 'lc' ? 'lc' : 'main');
+  const listFor = set => (set === 'lc' ? LCQ : QS);
   const META = Engine.DATASET_META;
   const TIERS = { 1: 'L1 · Core (₹10–25 LPA)', 2: 'L2 · Strong (₹25–45 LPA)', 3: 'L3 · Advanced (₹45–80 LPA)' };
   const TIER_SHORT = { 1: 'L1', 2: 'L2', 3: 'L3' };
   const DIFFS = ['Easy', 'Medium', 'Hard'];
-  const qcode = id => 'Q' + String(id).padStart(3, '0');   // permanent question ID, e.g. Q031
-  const domainOf = q => (q.dataset ? META[q.dataset].domain : 'Puzzles & transformations');
+  const qcode = id => (+id >= 10000 ? 'LC' + (id - 10000) : 'Q' + String(id).padStart(3, '0'));   // permanent ID: Q031 / LC1251
+  const qhash = id => (+id >= 10000 ? '#lc-' + (id - 10000) : '#q-' + id);
+  const lcUrl = q => 'https://leetcode.com/problems/' + q.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '/';
+  const domainOf = q => (q.set === 'lc' ? 'LeetCode' : q.dataset ? META[q.dataset].domain : 'Puzzles & transformations');
   const app = document.getElementById('app');
 
   // ---------------- storage ----------------
@@ -68,8 +74,8 @@
     return out.innerHTML;
   }
   function renderTopProgress() {
-    const solved = QS.filter(q => isSolved(q.id)).length;
-    document.getElementById('topProgress').innerHTML = `<span><b style="color:var(--text)">${solved}</b> / ${QS.length} solved</span><span class="bar"><i style="width:${(100 * solved / QS.length).toFixed(1)}%"></i></span>`;
+    const solved = ALL.filter(q => isSolved(q.id)).length;
+    document.getElementById('topProgress').innerHTML = `<span><b style="color:var(--text)">${solved}</b> / ${ALL.length} solved</span><span class="bar"><i style="width:${(100 * solved / ALL.length).toFixed(1)}%"></i></span>`;
   }
   function setNav(name) { document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.nav === name)); }
   function makeEditor(el, lang, value, extraKeys) {
@@ -97,7 +103,9 @@
     hash = hash.replace(/^q\//, 'q-').replace(/^datasets\/(\w+)/, 'data-$1').replace(/^guide\//, 'guide-');  // old-style links
     window.scrollTo(0, 0);
     let m;
-    if ((m = /^q-(\d+)$/.exec(hash)) && QBYID[+m[1]]) return viewQuestion(QBYID[+m[1]]);
+    if ((m = /^q-(\d+)$/.exec(hash)) && QBYID[+m[1]] && +m[1] < 10000) return viewQuestion(QBYID[+m[1]]);
+    if ((m = /^lc-(\d+)$/.exec(hash)) && QBYID[10000 + +m[1]]) return viewQuestion(QBYID[10000 + +m[1]]);
+    if (hash === 'leetcode') return viewProblems('lc');
     if (hash === 'notes') return viewNotes();
     if ((m = /^data-(\w+)$/.exec(hash)) && META[m[1]]) return viewPlayground(m[1]);
     if (hash === 'datasets') return viewDatasets();
@@ -107,9 +115,12 @@
   window.addEventListener('hashchange', route);
 
   // ================= PROBLEMS =================
-  const F = Object.assign({ q: '', diff: [], tier: [], domain: [], topic: [], company: [], status: 'all', sort: 'id' }, JSON.parse(sessionStorage.getItem('sqlab.filters') || '{}'));
-  function viewProblems() {
-    setNav('problems');
+  const FILTERS = {};
+  ['main', 'lc'].forEach(k => { let saved = {}; try { saved = JSON.parse(sessionStorage.getItem('sqlab.filters.' + k) || '{}'); } catch (e) { /* ignore */ } FILTERS[k] = Object.assign({ q: '', diff: [], tier: [], domain: [], topic: [], company: [], status: 'all', sort: 'id' }, saved); });
+  function viewProblems(set = 'main') {
+    const isLC = set === 'lc';
+    const QS = listFor(set), F = FILTERS[set];
+    setNav(isLC ? 'leetcode' : 'problems');
     const counts = (fn) => { const m = {}; QS.forEach(q => [].concat(fn(q)).forEach(k => (m[k] = (m[k] || 0) + 1))); return m; };
     const topicCounts = counts(q => q.topics), companyCounts = counts(q => q.companies), domainCounts = counts(domainOf);
     const topics = Object.keys(topicCounts).sort((a, b) => topicCounts[b] - topicCounts[a] || a.localeCompare(b));
@@ -121,40 +132,42 @@
     app.innerHTML = `<div class="page">
       <section class="hero">
         <div class="hero-card">
-          <h1>Crack the SQL round — from ₹10 LPA to ₹80 LPA roles</h1>
+          ${isLC ? `<h1>LeetCode SQL — ${QS.length} Database problems</h1>
+          <p>The LeetCode Database problems <b>175 → 1336</b>, each with its LeetCode number and title (ID <code>LC175</code>…), a short problem statement, its own sample tables, and optimised <b>MySQL + pandas</b> solutions with explanations. Same editor, answer checker and notes as the main set. Statements here are rewritten and the sample data is original — use the <b>LeetCode ↗</b> link on each problem for the official version.</p>
+          <div class="cta"><button class="btn primary" id="randomBtn">🎲 Random unsolved LeetCode problem</button><a class="btn" href="#problems">← Interview problems (Q001–Q092)</a></div>` : `<h1>Crack the SQL round — from ₹10 LPA to ₹80 LPA roles</h1>
           <p>${QS.length} interview-grade problems on realistic multi-table datasets — e-commerce, payments (Razorpay-style), lending (Navi-style), food delivery, product event logs, subscriptions and rides — plus the classic LeetCode / Namaste-SQL patterns. Write <b>MySQL</b> or <b>pandas</b>, run it in your browser, and check your answer instantly.</p>
-          <div class="cta"><button class="btn primary" id="randomBtn">🎲 Random unsolved problem</button><a class="btn" href="#guide">📘 How to use this + patterns cheat-sheet</a><a class="btn" href="#datasets">🗄️ Explore the datasets</a></div>
+          <div class="cta"><button class="btn primary" id="randomBtn">🎲 Random unsolved problem</button><a class="btn" href="#guide">📘 How to use this + patterns cheat-sheet</a><a class="btn" href="#datasets">🗄️ Explore the datasets</a><a class="btn" href="#leetcode">🧩 LeetCode SQL (${LCQ.length})</a></div>`}
         </div>
         <div class="stats">
           ${DIFFS.map(d => `<div class="stat"><div class="n" style="color:${colors[d]}">${solvedBy(d)}<span class="faint" style="font-size:14px">/${totalBy(d)}</span></div><div class="l">${d}</div><div class="track"><i style="width:${100 * solvedBy(d) / totalBy(d)}%;background:${colors[d]}"></i></div></div>`).join('')}
-          ${[1, 2, 3].map(t => { const tot = QS.filter(q => q.tier === t).length, s = QS.filter(q => q.tier === t && isSolved(q.id)).length; return `<div class="stat"><div class="n" style="color:var(--violet)">${s}<span class="faint" style="font-size:14px">/${tot}</span></div><div class="l">${TIERS[t]}</div><div class="track"><i style="width:${100 * s / tot}%;background:var(--violet)"></i></div></div>`; }).join('')}
+          ${isLC ? '' : [1, 2, 3].map(t => { const tot = QS.filter(q => q.tier === t).length, s = QS.filter(q => q.tier === t && isSolved(q.id)).length; return `<div class="stat"><div class="n" style="color:var(--violet)">${s}<span class="faint" style="font-size:14px">/${tot}</span></div><div class="l">${TIERS[t]}</div><div class="track"><i style="width:${100 * s / tot}%;background:var(--violet)"></i></div></div>`; }).join('')}
         </div>
       </section>
       <div class="layout">
         <aside class="filters">
-          <h4>Search</h4><input type="search" id="fq" placeholder="Q031, 31, title, table, keyword…" value="${esc(F.q)}">
+          <h4>Search</h4><input type="search" id="fq" placeholder="${isLC ? 'LC1251, 1251, title, table…' : 'Q031, 31, title, table, keyword…'}" value="${esc(F.q)}">
           <h4>Status</h4>
           ${[['all', 'All'], ['unsolved', 'Unsolved'], ['attempted', 'Attempted, not solved'], ['solved', 'Solved'], ['bookmarked', '★ Bookmarked'], ['noted', '📝 Has notes']].map(([v, l]) => `<label class="opt"><input type="radio" name="fstatus" value="${v}" ${F.status === v ? 'checked' : ''}> ${l}</label>`).join('')}
           <h4>Difficulty</h4>
           ${DIFFS.map(d => `<label class="opt"><input type="checkbox" data-f="diff" value="${d}" ${F.diff.includes(d) ? 'checked' : ''}> <span class="pill ${d}">${d}</span><span class="cnt">${totalBy(d)}</span></label>`).join('')}
-          <h4>Interview level</h4>
+          ${isLC ? '' : `<h4>Interview level</h4>
           ${[1, 2, 3].map(t => `<label class="opt"><input type="checkbox" data-f="tier" value="${t}" ${F.tier.includes(String(t)) ? 'checked' : ''}> ${TIERS[t]}<span class="cnt">${QS.filter(q => q.tier === t).length}</span></label>`).join('')}
           <h4>Domain / dataset</h4>
-          ${domains.map(d => `<label class="opt"><input type="checkbox" data-f="domain" value="${esc(d)}" ${F.domain.includes(d) ? 'checked' : ''}> ${esc(d)}<span class="cnt">${domainCounts[d]}</span></label>`).join('')}
+          ${domains.map(d => `<label class="opt"><input type="checkbox" data-f="domain" value="${esc(d)}" ${F.domain.includes(d) ? 'checked' : ''}> ${esc(d)}<span class="cnt">${domainCounts[d]}</span></label>`).join('')}`}
           <h4>Topic / pattern</h4>
           <div class="chips-select" id="topicChips">${topics.map(t => `<button data-v="${esc(t)}" class="${F.topic.includes(t) ? 'on' : ''}">${esc(t)}</button>`).join('')}</div>
-          <h4>Company (pattern reported at)</h4>
+          ${isLC ? '' : `<h4>Company (pattern reported at)</h4>
           <input type="search" id="fcomp" placeholder="filter companies…" style="width:100%">
-          <div class="company-list" id="companyList">${companies.map(c => `<label class="opt" data-name="${esc(c.toLowerCase())}"><input type="checkbox" data-f="company" value="${esc(c)}" ${F.company.includes(c) ? 'checked' : ''}> ${esc(c)}<span class="cnt">${companyCounts[c]}</span></label>`).join('')}</div>
+          <div class="company-list" id="companyList">${companies.map(c => `<label class="opt" data-name="${esc(c.toLowerCase())}"><input type="checkbox" data-f="company" value="${esc(c)}" ${F.company.includes(c) ? 'checked' : ''}> ${esc(c)}<span class="cnt">${companyCounts[c]}</span></label>`).join('')}</div>`}
           <div style="margin-top:14px"><button class="btn small ghost" id="clearF">Clear all filters</button></div>
         </aside>
         <section>
-          <div class="list-head"><span class="count" id="countLbl"></span><form id="gotoF" class="goto"><input type="text" id="gotoIn" placeholder="Go to Q…" size="9"><button class="btn small">Open</button></form>
-            <select id="fsort"><option value="id">Sort: default order</option><option value="diff">Sort: difficulty</option><option value="tier">Sort: interview level</option><option value="domain">Sort: domain</option></select></div>
-          <table class="qtable"><thead><tr><th>#</th><th>Problem</th><th class="hide-sm">Domain</th><th>Level</th><th class="hide-sm">Seen at</th><th>Status</th><th></th></tr></thead><tbody id="qbody"></tbody></table>
+          <div class="list-head"><span class="count" id="countLbl"></span><form id="gotoF" class="goto"><input type="text" id="gotoIn" placeholder="${isLC ? 'Go to LC…' : 'Go to Q…'}" size="9"><button class="btn small">Open</button></form>
+            <select id="fsort"><option value="id">Sort: ${isLC ? 'LeetCode number' : 'default order'}</option><option value="diff">Sort: difficulty</option>${isLC ? '' : '<option value="tier">Sort: interview level</option><option value="domain">Sort: domain</option>'}</select></div>
+          <table class="qtable"><thead><tr><th>#</th><th>Problem</th>${isLC ? '' : '<th class="hide-sm">Domain</th>'}<th>Level</th>${isLC ? '' : '<th class="hide-sm">Seen at</th>'}<th>Status</th><th></th></tr></thead><tbody id="qbody"></tbody></table>
         </section>
       </div></div>`;
-    const save = () => sessionStorage.setItem('sqlab.filters', JSON.stringify(F));
+    const save = () => { try { sessionStorage.setItem('sqlab.filters.' + set, JSON.stringify(F)); } catch (e) { /* ignore */ } };
     const tbody = document.getElementById('qbody');
     function apply() {
       if (!document.body.contains(tbody)) return;   // page was left before a delayed refresh fired
@@ -171,8 +184,8 @@
         if (F.status === 'attempted' && (!isAttempted(x.id) || isSolved(x.id))) return false;
         if (F.status === 'bookmarked' && !bm.has(x.id)) return false;
         if (F.status === 'noted' && !nt[x.id]) return false;
-        const num = /^#?q?0*(\d+)$/i.exec(q);
-        if (num) return x.id === +num[1];
+        const num = (isLC ? /^#?(?:lc)?0*(\d+)$/i : /^#?q?0*(\d+)$/i).exec(q);
+        if (num) return (isLC ? x.lc : x.id) === +num[1];
         if (q) {
           const tables = x.tables ? Object.keys(x.tables).join(' ') : x.dataset;
           const hay = (x.title + ' ' + x.topics.join(' ') + ' ' + x.companies.join(' ') + ' ' + tables + ' ' + domainOf(x) + ' ' + x.prompt.replace(/<[^>]+>/g, ' ')).toLowerCase();
@@ -189,22 +202,24 @@
         const ic = l => `<span class="${s[l] === 'solved' ? 'done' : s[l] ? 'try' : ''}" title="${l === 'sql' ? 'MySQL' : 'pandas'}: ${s[l] || 'not started'}">${l === 'sql' ? 'SQL' : 'PY'}${s[l] === 'solved' ? ' ✓' : ''}</span>`;
         return `<tr data-id="${x.id}"><td class="qid">${qcode(x.id)}</td>
           <td><div class="qtitle">${esc(x.title)} ${nt[x.id] ? '<span title="has notes">📝</span>' : ''}</div><div>${x.topics.slice(0, 4).map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div></td>
-          <td class="hide-sm muted" style="white-space:nowrap">${esc(domainOf(x))}</td>
-          <td style="white-space:nowrap"><span class="pill ${x.difficulty}">${x.difficulty}</span> <span class="tier">${TIER_SHORT[x.tier]}</span></td>
-          <td class="companies-cell hide-sm">${esc(x.companies.slice(0, 3).join(', '))}${x.companies.length > 3 ? ` <span class="faint">+${x.companies.length - 3}</span>` : ''}</td>
+          ${isLC ? '' : `<td class="hide-sm muted" style="white-space:nowrap">${esc(domainOf(x))}</td>`}
+          <td style="white-space:nowrap"><span class="pill ${x.difficulty}">${x.difficulty}</span>${isLC ? '' : ` <span class="tier">${TIER_SHORT[x.tier]}</span>`}</td>
+          ${isLC ? '' : `<td class="companies-cell hide-sm">${esc(x.companies.slice(0, 3).join(', '))}${x.companies.length > 3 ? ` <span class="faint">+${x.companies.length - 3}</span>` : ''}</td>`}
           <td><span class="status-ic">${ic('sql')}${ic('py')}</span></td>
           <td><span class="star ${bm.has(x.id) ? 'on' : ''}" data-star="${x.id}" title="Bookmark">${bm.has(x.id) ? '★' : '☆'}</span></td></tr>`;
-      }).join('') : `<tr><td colspan="7" class="empty">No problems match these filters.</td></tr>`;
+      }).join('') : `<tr><td colspan="${isLC ? 5 : 7}" class="empty">No problems match these filters.</td></tr>`;
       save();
     }
     tbody.addEventListener('click', e => {
       const st = e.target.closest('[data-star]');
       if (st) { const on = toggleBookmark(+st.dataset.star); st.classList.toggle('on', on); st.textContent = on ? '★' : '☆'; e.stopPropagation(); return; }
-      const tr = e.target.closest('tr[data-id]'); if (tr) location.hash = '#q-' + tr.dataset.id;
+      const tr = e.target.closest('tr[data-id]'); if (tr) location.hash = qhash(+tr.dataset.id);
     });
     document.getElementById('gotoF').addEventListener('submit', e => {
       e.preventDefault(); const m = /(\d+)/.exec(document.getElementById('gotoIn').value);
-      if (m && QBYID[+m[1]]) location.hash = '#q-' + +m[1]; else toast('No question with that number (Q001–' + qcode(QS[QS.length - 1].id) + ')');
+      const id = m ? (isLC ? 10000 + +m[1] : +m[1]) : NaN;
+      if (QBYID[id] && setOf(QBYID[id]) === set) location.hash = qhash(id);
+      else toast(isLC ? 'No LeetCode problem with that number in this set (LC175–LC1336)' : 'No question with that number (Q001–' + qcode(QS[QS.length - 1].id) + ')');
     });
     document.getElementById('fq').addEventListener('input', debounce(e => { F.q = e.target.value; apply(); }, 150));
     document.querySelectorAll('input[name=fstatus]').forEach(r => r.addEventListener('change', e => { F.status = e.target.value; apply(); }));
@@ -215,12 +230,12 @@
       const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v;
       F.topic = F.topic.includes(v) ? F.topic.filter(x => x !== v) : [...F.topic, v]; b.classList.toggle('on'); apply();
     });
-    document.getElementById('fcomp').addEventListener('input', e => { const v = e.target.value.toLowerCase(); document.querySelectorAll('#companyList .opt').forEach(o => (o.style.display = o.dataset.name.includes(v) ? '' : 'none')); });
+    if (!isLC) document.getElementById('fcomp').addEventListener('input', e => { const v = e.target.value.toLowerCase(); document.querySelectorAll('#companyList .opt').forEach(o => (o.style.display = o.dataset.name.includes(v) ? '' : 'none')); });
     const sortSel = document.getElementById('fsort'); sortSel.value = F.sort; sortSel.addEventListener('change', e => { F.sort = e.target.value; apply(); });
-    document.getElementById('clearF').addEventListener('click', () => { Object.assign(F, { q: '', diff: [], tier: [], domain: [], topic: [], company: [], status: 'all' }); save(); viewProblems(); });
+    document.getElementById('clearF').addEventListener('click', () => { Object.assign(F, { q: '', diff: [], tier: [], domain: [], topic: [], company: [], status: 'all' }); save(); viewProblems(set); });
     document.getElementById('randomBtn').addEventListener('click', () => {
       const pool = QS.filter(x => !isSolved(x.id)); const pick = (pool.length ? pool : QS)[Math.floor(Math.random() * (pool.length || QS.length))];
-      location.hash = '#q-' + pick.id;
+      location.hash = qhash(pick.id);
     });
     apply();
   }
@@ -232,7 +247,9 @@
     return `# ${qcode(q.id)}. ${q.title}\n# DataFrames: ${tableNames.join(', ')}   (pd and np are already imported)\n# DATE/DATETIME columns are already parsed as datetime64.\n# Put your final answer in a DataFrame called \`result\`.\n\nresult = ${first}.head(10)\n`;
   }
   function viewQuestion(q) {
-    setNav('problems');
+    const isLC = q.set === 'lc';
+    const QS = listFor(setOf(q));
+    setNav(isLC ? 'leetcode' : 'problems');
     const tableNames = q.tables ? Object.keys(q.tables) : [];
     let lang = LS.get('lang', 'sql');
     const idx = QS.findIndex(x => x.id === q.id);
@@ -241,10 +258,10 @@
     app.innerHTML = `<div class="ws" id="ws">
       <section class="pane">
         <div class="ws-head">
-          <a class="btn small ghost" href="#problems">← Problems</a>
+          <a class="btn small ghost" href="${isLC ? '#leetcode' : '#problems'}">← ${isLC ? 'LeetCode' : 'Problems'}</a>
           <span class="qcode" id="qCode" title="Click to copy this question ID">${qcode(q.id)}</span><h2>${esc(q.title)}</h2>
           <span class="star ${bm.has(q.id) ? 'on' : ''}" id="qStar" title="Bookmark">${bm.has(q.id) ? '★' : '☆'}</span>
-          <div class="nav-q">${prev ? `<a class="btn small" href="#q-${prev.id}" title="Previous">‹</a>` : ''}${next ? `<a class="btn small" href="#q-${next.id}" title="Next">›</a>` : ''}</div>
+          <div class="nav-q">${prev ? `<a class="btn small" href="${qhash(prev.id)}" title="Previous">‹</a>` : ''}${next ? `<a class="btn small" href="${qhash(next.id)}" title="Next">›</a>` : ''}</div>
         </div>
         <div class="tabs" id="ltabs"><button data-t="desc" class="on">Description</button><button data-t="schema">Schema &amp; data</button><button data-t="hint">Hint</button><button data-t="sol">Solution</button></div>
         <div class="tab-body" id="lbody"></div>
@@ -274,10 +291,11 @@
       document.querySelectorAll('#ltabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
       if (t === 'desc') {
         const dsLine = q.dataset ? `<div class="ds-banner">Dataset: <b>${esc(META[q.dataset].title)}</b> — multi-table, open the <a href="#" data-goto="schema">Schema &amp; data</a> tab for columns and sample rows.</div>` : `<div class="ds-banner">Tables for this problem: ${tableNames.map(t => `<code>${t}</code>`).join(' ')} — see <a href="#" data-goto="schema">Schema &amp; data</a>.</div>`;
-        lbody.innerHTML = `<div class="idnote">Question ID <b>${qcode(q.id)}</b> — quote this ID when you ask for help with this problem. <button class="btn small ghost" id="copyId2">Copy ID</button></div><div class="meta-row"><span class="pill ${q.difficulty}">${q.difficulty}</span><span class="tier">${TIERS[q.tier]}</span><span class="chip">${esc(domainOf(q))}</span></div>
+        lbody.innerHTML = `<div class="idnote">Question ID <b>${qcode(q.id)}</b> — quote this ID when you ask for help with this problem. <button class="btn small ghost" id="copyId2">Copy ID</button></div><div class="meta-row"><span class="pill ${q.difficulty}">${q.difficulty}</span>${isLC ? `<span class="chip">LeetCode #${q.lc}</span><a class="btn small" href="${lcUrl(q)}" target="_blank" rel="noopener">Open on LeetCode ↗</a>` : `<span class="tier">${TIERS[q.tier]}</span><span class="chip">${esc(domainOf(q))}</span>`}</div>
           <div class="prose">${q.prompt}</div>${dsLine}
           <div class="section-label">Patterns</div><div>${q.topics.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>
-          <div class="section-label">Pattern reported in interviews at</div><div class="muted">${esc(q.companies.join(' · '))}</div>
+          ${q.companies.length ? `<div class="section-label">Pattern reported in interviews at</div><div class="muted">${esc(q.companies.join(' · '))}</div>` : ''}
+          ${isLC ? '<div class="faint" style="font-size:12px;margin-top:10px">Statement rewritten in short form; sample tables are original. LeetCode runs your query on more hidden test cases — this checker tests the sample shown here.</div>' : ''}
           <div class="section-label">Expected output</div>
           <div id="expBox"><button class="btn small" id="expBtn">Show first 5 rows of the expected output</button> <span class="faint">(columns + format, small spoiler)</span></div>`;
         document.getElementById('copyId2').addEventListener('click', copyId);
@@ -480,7 +498,7 @@
       const n = notes();
       const list = Object.entries(n).filter(([id, v]) => QBYID[id] && (!imp || v.important) && (!q || (v.text + ' ' + QBYID[id].title + ' ' + qcode(id)).toLowerCase().includes(q)))
         .sort((a, b) => (b[1].important - a[1].important) || (b[1].updated - a[1].updated));
-      cards.innerHTML = list.length ? list.map(([id, v]) => { const x = QBYID[id]; return `<article class="note-card ${v.important ? 'important' : ''}"><header>${v.important ? '⭐' : ''}<a href="#q-${id}"><span class="qcode sm">${qcode(id)}</span> ${esc(x.title)}</a><span class="pill ${x.difficulty}">${x.difficulty}</span></header>
+      cards.innerHTML = list.length ? list.map(([id, v]) => { const x = QBYID[id]; return `<article class="note-card ${v.important ? 'important' : ''}"><header>${v.important ? '⭐' : ''}<a href="${qhash(id)}"><span class="qcode sm">${qcode(id)}</span> ${esc(x.title)}</a><span class="pill ${x.difficulty}">${x.difficulty}</span></header>
         <div>${x.topics.slice(0, 4).map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>
         <div class="body">${renderNoteBody(v.text) || '<span class="faint">(no text)</span>'}</div>
         <footer>Updated ${new Date(v.updated).toLocaleString()}<button class="btn small ghost" data-del="${id}">Delete</button></footer></article>`; }).join('')

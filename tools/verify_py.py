@@ -32,7 +32,8 @@ def to_rows(result):
     if isinstance(result, pd.Series):
         result = result.to_frame()
     if not isinstance(result.index, pd.RangeIndex):
-        result = result.reset_index()
+        named = isinstance(result.index, pd.MultiIndex) or result.index.name is not None
+        result = result.reset_index(drop=not named)
     rows = []
     for r in result.itertuples(index=False):
         row = []

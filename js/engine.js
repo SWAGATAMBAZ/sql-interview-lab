@@ -70,7 +70,8 @@
     const translated = MySQLCompat.rewriteMySQL(sql);
     const t0 = performance.now();
     try {
-      const res = db.exec(translated);
+      let res = db.exec(translated);
+      if (q.after) res = res.concat(db.exec(MySQLCompat.rewriteMySQL(q.after)));
       const ms = performance.now() - t0;
       const last = res[res.length - 1];
       return { columns: last ? last.columns : [], rows: last ? last.values : [], ms, statements: res.length, translated, changes: db.getRowsModified() };
@@ -150,7 +151,9 @@ def _run(key, code):
     if isinstance(r, pd.Series): r = r.to_frame()
     if not isinstance(r, pd.DataFrame):
         r = pd.DataFrame({'result': [r]})
-    if not isinstance(r.index, pd.RangeIndex): r = r.reset_index()
+    if not isinstance(r.index, pd.RangeIndex):
+        named = isinstance(r.index, pd.MultiIndex) or r.index.name is not None
+        r = r.reset_index(drop=not named)
     out['columns'] = [str(c) for c in r.columns]
     out['rows'] = [[_cell(v) for v in row] for row in r.itertuples(index=False)]
     out['shape'] = list(r.shape)

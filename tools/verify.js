@@ -6,7 +6,7 @@ const SITE = path.join(__dirname, '..');
 global.window = global.window || {};
 new Function('window', fs.readFileSync(path.join(SITE, 'data', 'helpers.js'), 'utf8'))(window);
 const files = fs.readdirSync(path.join(SITE, 'data')).filter(f => f.startsWith('q_')).sort();
-for (const f of files) new Function('window', 'QT', fs.readFileSync(path.join(SITE, 'data', f), 'utf8'))(window, window.QT);
+for (const f of files) new Function('window', 'QT', 'LC', fs.readFileSync(path.join(SITE, 'data', f), 'utf8'))(window, window.QT, window.LC);
 const only = process.argv[2] ? process.argv[2].split(',').map(Number) : null;
 (async () => {
   const out = {}; let bad = 0;
@@ -19,12 +19,12 @@ const only = process.argv[2] ? process.argv[2].split(',').map(Number) : null;
     const db = await h.dbFor(q);
     try {
       const t0 = Date.now();
-      const r = h.runSQL(db, q.sql);
+      const r = h.runSQL(db, q.sql, q.after);
       out[q.id] = r;
       const ms = Date.now() - t0;
       const flag = r.rows.length === 0 ? '  <-- EMPTY' : '';
       if (flag) bad++;
-      console.log(`Q${q.id} [${q.dataset || 'inline'}] ${q.title}: ${r.rows.length} rows, ${r.columns.length} cols, ${ms}ms${flag}`);
+      console.log(`${q.lc ? 'LC' + q.lc : 'Q' + q.id} [${q.dataset || 'inline'}] ${q.title}: ${r.rows.length} rows, ${r.columns.length} cols, ${ms}ms${flag}`);
       if (process.env.SHOW) console.log('   ', r.columns.join(' | '), '\n   ', r.rows.slice(0, +process.env.SHOW).map(x => JSON.stringify(x)).join('\n    '));
     } catch (e) { bad++; console.log(`Q${q.id} SQL ERROR: ${e.message}`); }
     db.close();
